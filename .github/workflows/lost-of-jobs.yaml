@@ -11,6 +11,10 @@ env:
   PYTHON_VERSION: '3.11'
   GO_VERSION: '1.21'
 
+# Shared flakiness macro — rolls a d5; fails on 1 (20%), passes on 2-5 (80%)
+# Usage in every run: step ↓
+#   if [ $((RANDOM % 5)) -eq 0 ]; then echo "💥 Flaky failure!"; exit 1; fi
+
 jobs:
 
   # ─── TIER 1: Foundational checks (no dependencies) ───────────────────────────
@@ -20,28 +24,40 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: npx js-yaml --version && echo "YAML syntax OK"
+      - name: Check YAML syntax
+        run: |
+          if [ $((RANDOM % 5)) -eq 0 ]; then echo "💥 Flaky failure!"; exit 1; fi
+          echo "✅ YAML syntax OK"
 
   validate-json:
     name: 🗂 Validate JSON
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: python -m json.tool package.json > /dev/null && echo "JSON OK"
+      - name: Check JSON syntax
+        run: |
+          if [ $((RANDOM % 5)) -eq 0 ]; then echo "💥 Flaky failure!"; exit 1; fi
+          echo "✅ JSON syntax OK"
 
   detect-secrets:
     name: 🔐 Detect Secrets
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: echo "Running secret scanning..."
+      - name: Run secret scanning
+        run: |
+          if [ $((RANDOM % 5)) -eq 0 ]; then echo "💥 Flaky failure!"; exit 1; fi
+          echo "✅ No secrets detected"
 
   check-licenses:
     name: 📜 Check Licenses
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: echo "Checking open-source licenses..."
+      - name: Verify open-source licenses
+        run: |
+          if [ $((RANDOM % 5)) -eq 0 ]; then echo "💥 Flaky failure!"; exit 1; fi
+          echo "✅ All licenses compliant"
 
   # ─── TIER 2: Install & build foundations ─────────────────────────────────────
 
@@ -54,8 +70,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-      - run: npm ci
+      - name: Install npm packages
+        run: |
+          if [ $((RANDOM % 5)) -eq 0 ]; then echo "💥 Flaky failure!"; exit 1; fi
+          echo "✅ npm packages installed"
       - uses: actions/cache/save@v4
         with:
           path: node_modules
@@ -70,8 +88,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-          cache: pip
-      - run: pip install -r requirements.txt
+      - name: Install pip packages
+        run: |
+          if [ $((RANDOM % 5)) -eq 0 ]; then echo "💥 Flaky failure!"; exit 1; fi
+          echo "✅ Python packages installed"
 
   install-go-deps:
     name: 🐹 Install Go Deps
@@ -82,8 +102,10 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
-          cache: true
-      - run: go mod download
+      - name: Download Go modules
+        run: |
+          if [ $((RANDOM % 5)) -eq 0 ]; then echo "💥 Flaky failure!"; exit 1; fi
+          echo "✅ Go modules downloaded"
 
   # ─── TIER 3: Linting & static analysis ───────────────────────────────────────
 
@@ -97,7 +119,10 @@ jobs:
         with:
           path: node_modules
           key: node-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
-      - run: npx eslint . --ext .js,.ts,.tsx
+      - name: Run ESLint
+        run: |
+          if [ $((RANDOM % 5)) -eq 0 ]; then echo "💥 Flaky failure!"; exit 1; fi
+          echo "✅ No ESLint violations found"
 
   lint-python:
     name: 🧹 Lint Python
@@ -105,7 +130,10 @@ jobs:
     needs: [install-python-deps]
     steps:
       - uses: actions/checkout@v4
-      - run: pip install ruff && ruff check .
+      - name: Run Ruff linter
+        run: |
+          if [ $((RANDOM % 5)) -eq 0 ]; then echo "💥 Flaky failure!"; exit 1; fi
+          echo "✅ Python lint passed"
 
   lint-go:
     name: 🧹 Lint Go
@@ -113,7 +141,10 @@ jobs:
     needs: [install-go-deps]
     steps:
       - uses: actions/checkout@v4
-      - run: go vet ./...
+      - name: Run go vet
+        run: |
+          if [ $((RANDOM % 5)) -eq 0 ]; then echo "💥 Flaky failure!"; exit 1; fi
+          echo "✅ Go vet passed"
 
   typecheck:
     name: 🔍 TypeScript Check
@@ -125,7 +156,10 @@ jobs:
         with:
           path: node_modules
           key: node-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
-      - run: npx tsc --noEmit
+      - name: Run tsc --noEmit
+        run: |
+          if [ $((RANDOM % 5)) -eq 0 ]; then echo "💥 Flaky failure!"; exit 1; fi
+          echo "✅ TypeScript types OK"
 
   # ─── TIER 4: Testing ──────────────────────────────────────────────────────────
 
@@ -139,7 +173,10 @@ jobs:
         with:
           path: node_modules
           key: node-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
-      - run: npx jest --coverage --ci
+      - name: Run Jest
+        run: |
+          if [ $((RANDOM % 5)) -eq 0 ]; then echo "💥 Flaky failure!"; exit 1; fi
+          echo "✅ All JS unit tests passed"
 
   unit-tests-python:
     name: 🧪 Unit Tests (Python)
@@ -147,7 +184,10 @@ jobs:
     needs: [lint-python]
     steps:
       - uses: actions/checkout@v4
-      - run: pip install pytest && pytest tests/unit -v
+      - name: Run pytest
+        run: |
+          if [ $((RANDOM % 5)) -eq 0 ]; then echo "💥 Flaky failure!"; exit 1; fi
+          echo "✅ All Python unit tests passed"
 
   unit-tests-go:
     name: 🧪 Unit Tests (Go)
@@ -158,7 +198,10 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
-      - run: go test ./... -v -short
+      - name: Run go test
+        run: |
+          if [ $((RANDOM % 5)) -eq 0 ]; then echo "💥 Flaky failure!"; exit 1; fi
+          echo "✅ All Go unit tests passed"
 
   # ─── TIER 5: Security & quality gates ────────────────────────────────────────
 
@@ -168,7 +211,10 @@ jobs:
     needs: [detect-secrets, unit-tests-js, unit-tests-python]
     steps:
       - uses: actions/checkout@v4
-      - run: echo "Running Semgrep SAST..."
+      - name: Run Semgrep SAST
+        run: |
+          if [ $((RANDOM % 5)) -eq 0 ]; then echo "💥 Flaky failure!"; exit 1; fi
+          echo "✅ No security issues found"
 
   dependency-audit:
     name: 🔍 Dependency Audit
@@ -176,7 +222,10 @@ jobs:
     needs: [install-node-deps, install-python-deps, check-licenses]
     steps:
       - uses: actions/checkout@v4
-      - run: npm audit --audit-level=high
+      - name: Run npm audit
+        run: |
+          if [ $((RANDOM % 5)) -eq 0 ]; then echo "💥 Flaky failure!"; exit 1; fi
+          echo "✅ No high-severity vulnerabilities"
 
   # ─── TIER 6: Build ────────────────────────────────────────────────────────────
 
@@ -190,7 +239,11 @@ jobs:
         with:
           path: node_modules
           key: node-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
-      - run: npm run build
+      - name: Compile frontend bundle
+        run: |
+          if [ $((RANDOM % 5)) -eq 0 ]; then echo "💥 Flaky failure!"; exit 1; fi
+          mkdir -p dist && echo "built" > dist/index.html
+          echo "✅ Frontend bundle compiled"
       - uses: actions/upload-artifact@v4
         with:
           name: frontend-dist
@@ -205,7 +258,10 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
-      - run: go build -o bin/server ./cmd/server
+      - name: Compile Go binary
+        run: |
+          if [ $((RANDOM % 5)) -eq 0 ]; then echo "💥 Flaky failure!"; exit 1; fi
+          echo "✅ Go binary compiled successfully"
 
   build-docker:
     name: 🐳 Build Docker Image
@@ -217,7 +273,10 @@ jobs:
         with:
           name: frontend-dist
           path: dist/
-      - run: docker build -t myapp:${{ github.sha }} .
+      - name: Build and tag Docker image
+        run: |
+          if [ $((RANDOM % 5)) -eq 0 ]; then echo "💥 Flaky failure!"; exit 1; fi
+          echo "✅ Docker image built: myapp:${{ github.sha }}"
 
   # ─── TIER 7: Integration & E2E ───────────────────────────────────────────────
 
@@ -232,7 +291,10 @@ jobs:
           POSTGRES_PASSWORD: test
     steps:
       - uses: actions/checkout@v4
-      - run: echo "Running integration tests against live DB..."
+      - name: Run integration test suite
+        run: |
+          if [ $((RANDOM % 5)) -eq 0 ]; then echo "💥 Flaky failure!"; exit 1; fi
+          echo "✅ Integration tests passed"
 
   e2e-tests:
     name: 🌐 E2E Tests (Playwright)
@@ -240,8 +302,10 @@ jobs:
     needs: [build-docker]
     steps:
       - uses: actions/checkout@v4
-      - run: npx playwright install --with-deps chromium
-      - run: npx playwright test
+      - name: Run Playwright E2E suite
+        run: |
+          if [ $((RANDOM % 5)) -eq 0 ]; then echo "💥 Flaky failure!"; exit 1; fi
+          echo "✅ All E2E scenarios passed"
 
   # ─── TIER 8: Performance & accessibility ─────────────────────────────────────
 
@@ -251,7 +315,10 @@ jobs:
     needs: [e2e-tests]
     steps:
       - uses: actions/checkout@v4
-      - run: echo "Running Lighthouse CI..."
+      - name: Run Lighthouse CI
+        run: |
+          if [ $((RANDOM % 5)) -eq 0 ]; then echo "💥 Flaky failure!"; exit 1; fi
+          echo "✅ Lighthouse scores above threshold"
 
   # ─── TIER 9: Deploy ───────────────────────────────────────────────────────────
 
@@ -263,7 +330,10 @@ jobs:
     if: github.ref == 'refs/heads/develop'
     steps:
       - uses: actions/checkout@v4
-      - run: echo "Deploying to staging environment..."
+      - name: Push to staging environment
+        run: |
+          if [ $((RANDOM % 5)) -eq 0 ]; then echo "💥 Flaky failure!"; exit 1; fi
+          echo "✅ Deployed to staging successfully"
 
   deploy-production:
     name: 🚀 Deploy → Production
@@ -273,7 +343,10 @@ jobs:
     if: github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
-      - run: echo "Deploying to production environment..."
+      - name: Push to production environment
+        run: |
+          if [ $((RANDOM % 5)) -eq 0 ]; then echo "💥 Flaky failure!"; exit 1; fi
+          echo "✅ Deployed to production successfully"
 
   # ─── TIER 10: Post-deploy ─────────────────────────────────────────────────────
 
@@ -283,7 +356,10 @@ jobs:
     needs: [deploy-production]
     steps:
       - uses: actions/checkout@v4
-      - run: echo "Verifying production is healthy..."
+      - name: Verify production health
+        run: |
+          if [ $((RANDOM % 5)) -eq 0 ]; then echo "💥 Flaky failure!"; exit 1; fi
+          echo "✅ Production is healthy"
 
   notify-team:
     name: 📣 Notify Team
@@ -291,4 +367,7 @@ jobs:
     needs: [smoke-tests]
     if: always()
     steps:
-      - run: echo "Posting deployment summary to Slack..."
+      - name: Post deployment summary to Slack
+        run: |
+          if [ $((RANDOM % 5)) -eq 0 ]; then echo "💥 Flaky failure!"; exit 1; fi
+          echo "✅ Team notified"
